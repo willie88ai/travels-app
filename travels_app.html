@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宜蘭冬日慢旅 12.13-16</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
+            background-color: #F5F5F0; /* 日式米色 */
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* 隱藏捲軸但保留功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #4F5D75 0%, #2D3142 100%);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'jp-black': '#2C2C2C',
+                        'jp-gray': '#8E8E8E',
+                        'jp-beige': '#F5F5F0',
+                        'jp-accent': '#C66B3D', // 柿色
+                        'jp-green': '#5F7161', // 抹茶色
+                        'jp-blue': '#6D8494', // 藍鼠色
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-jp-black antialiased">
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-jp-beige relative pb-24 shadow-2xl overflow-hidden">
+        
+        <header class="pt-12 pb-4 px-6 bg-white rounded-b-3xl shadow-sm sticky top-0 z-10">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-widest text-jp-black">宜蘭冬旅</h1>
+                    <p class="text-xs text-jp-gray mt-1 tracking-wider">Dec 13 - 16, 2025</p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-jp-green text-white flex items-center justify-center shadow-md">
+                    <i class="fas fa-leaf"></i>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex items-center bg-gray-50 rounded-xl p-3 text-sm">
+                <i class="fas fa-cloud-rain text-blue-400 mr-3 text-lg"></i>
+                <div class="flex-1">
+                    <span class="block font-bold">宜蘭縣</span>
+                    <span class="text-xs text-gray-500">預報：陰短暫雨 16°C - 20°C</span>
+                </div>
+                <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">記得帶傘</span>
+            </div>
+        </header>
+
+        <main class="p-4 space-y-4">
+
+            <div v-if="currentTab === 'schedule'">
+                <div class="flex space-x-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+                    <button 
+                        v-for="(day, index) in days" 
+                        :key="index"
+                        @click="currentDay = index"
+                        :class="currentDay === index ? 'bg-jp-black text-white shadow-lg' : 'bg-white text-gray-400'"
+                        class="flex-shrink-0 px-5 py-3 rounded-2xl transition-all duration-300 flex flex-col items-center min-w-[80px]"
+                    >
+                        <span class="text-xs font-light">Day {{ index + 1 }}</span>
+                        <span class="text-lg font-bold">{{ day.date }}</span>
+                    </button>
+                </div>
+
+                <div class="space-y-4 pb-20">
+                    <div v-for="(item, idx) in days[currentDay].events" :key="idx" 
+                         class="glass-card rounded-2xl p-5 relative overflow-hidden transition-transform active:scale-95 duration-200">
+                        
+                        <div class="absolute left-0 top-0 bottom-0 w-1" :class="getCategoryColor(item.type)"></div>
+
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-600">{{ item.time }}</span>
+                                <span class="text-xs text-gray-400 border border-gray-200 px-1 rounded">{{ item.categoryLabel }}</span>
+                            </div>
+                            <a :href="'https://www.google.com/maps/search/?api=1&query=' + item.location" target="_blank" 
+                               class="text-jp-blue hover:bg-blue-50 p-2 rounded-full transition">
+                                <i class="fas fa-location-arrow text-lg"></i>
+                            </a>
+                        </div>
+
+                        <h3 class="text-lg font-bold mb-1">{{ item.title }}</h3>
+                        <p class="text-sm text-gray-500 mb-3 flex items-center">
+                            <i class="fas fa-map-marker-alt text-xs mr-1 w-4 text-center"></i> {{ item.location }}
+                        </p>
+
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <span v-for="tag in item.tags" :key="tag.text" 
+                                  :class="getTagStyle(tag.type)"
+                                  class="text-xs px-2 py-1 rounded-lg border flex items-center">
+                                <i :class="tag.icon" class="mr-1"></i> {{ tag.text }}
+                            </span>
+                        </div>
+
+                        <div v-if="item.note" class="mt-3 pt-3 border-t border-dashed border-gray-200">
+                            <p class="text-xs text-gray-500 leading-relaxed">
+                                <i class="fas fa-info-circle text-jp-accent mr-1"></i> {{ item.note }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center text-gray-400 text-xs py-4">
+                        <p>End of Day {{ currentDay + 1 }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'budget'" class="pb-20">
+                <div class="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
+                    <p class="text-sm text-gray-400 mb-1">總花費 (TWD)</p>
+                    <h2 class="text-4xl font-bold text-jp-black font-mono">{{ formatCurrency(totalBudget) }}</h2>
+                </div>
+
+                <div class="bg-white rounded-2xl p-4 shadow-sm mb-4">
+                    <h3 class="text-sm font-bold mb-3 text-gray-600">新增支出</h3>
+                    <div class="flex space-x-2 mb-2">
+                        <input v-model="newExpense.item" placeholder="項目 (如: 晚餐)" class="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 ring-jp-green">
+                        <input v-model="newExpense.amount" type="number" placeholder="$" class="w-24 bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 ring-jp-green">
+                    </div>
+                    <button @click="addExpense" class="w-full bg-jp-black text-white rounded-lg py-2 text-sm font-bold active:bg-gray-700 transition">
+                        <i class="fas fa-plus mr-1"></i> 記一筆
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <div v-for="(expense, idx) in expenses" :key="idx" class="bg-white px-4 py-3 rounded-xl flex justify-between items-center shadow-sm">
+                        <span class="text-sm font-medium">{{ expense.item }}</span>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-mono font-bold text-jp-green">{{ formatCurrency(expense.amount) }}</span>
+                            <button @click="removeExpense(idx)" class="text-gray-300 hover:text-red-400"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div v-if="expenses.length === 0" class="text-center text-gray-400 text-xs py-8">
+                        目前還沒有記帳喔
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-8 py-3 flex justify-around items-center z-50 max-w-md mx-auto rounded-t-2xl shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+            <button @click="currentTab = 'schedule'" :class="currentTab === 'schedule' ? 'text-jp-black' : 'text-gray-300'" class="flex flex-col items-center transition">
+                <i class="fas fa-map-marked-alt text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">行程</span>
+            </button>
+            <div class="w-px h-8 bg-gray-100"></div>
+            <button @click="currentTab = 'budget'" :class="currentTab === 'budget' ? 'text-jp-black' : 'text-gray-300'" class="flex flex-col items-center transition">
+                <i class="fas fa-calculator text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">記帳</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    currentTab: 'schedule',
+                    currentDay: 0,
+                    newExpense: { item: '', amount: '' },
+                    expenses: JSON.parse(localStorage.getItem('tripExpenses')) || [],
+                    days: [
+                        {
+                            date: '12/13 (五)',
+                            events: [
+                                {
+                                    time: '14:00', type: 'stay', title: '日光綠築 Check-in', location: '日光綠築 LOHERB', categoryLabel: '住宿',
+                                    tags: [{type: 'photo', text: '落羽松必拍', icon: 'fas fa-camera'}, {type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}],
+                                    note: '享受渡假氛圍，記得在天黑前多拍幾張情侶照。'
+                                },
+                                {
+                                    time: '16:30', type: 'spot', title: '冬山河生態綠舟', location: '冬山河生態綠舟', categoryLabel: '景點',
+                                    tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}],
+                                    note: '傍晚點燈後非常浪漫，適合散步。'
+                                },
+                                {
+                                    time: '18:30', type: 'food', title: '羅東夜市晚餐', location: '羅東夜市', categoryLabel: '美食',
+                                    tags: [{type: 'food', text: '阿灶伯羊肉', icon: 'fas fa-utensils'}, {type: 'food', text: '魏姐包心粉圓', icon: 'fas fa-ice-cream'}, {type: 'food', text: '小春卜肉', icon: 'fas fa-drumstick-bite'}],
+                                    note: '建議停在「羅東立體停車場」。人多小心錢包。'
+                                }
+                            ]
+                        },
+                        {
+                            date: '12/14 (六)',
+                            events: [
+                                {
+                                    time: '08:00', type: 'trans', title: '出發前往太平山', location: '太平山國家森林遊樂區', categoryLabel: '交通',
+                                    tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}, {type: 'info', text: '車程 1.5hr', icon: 'fas fa-car'}],
+                                    note: '山路蜿蜒，建議吃早餐不要吃太飽。'
+                                },
+                                {
+                                    time: '09:30', type: 'spot', title: '見晴懷古步道', location: '見晴懷古步道', categoryLabel: '景點',
+                                    tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}, {type: 'warn', text: '氣溫低', icon: 'fas fa-temperature-low'}],
+                                    note: '來回約1小時，平緩好走。霧氣重記得保暖。'
+                                },
+                                {
+                                    time: '14:30', type: 'spot', title: '清水地熱公園', location: '清水地熱公園', categoryLabel: '體驗',
+                                    tags: [{type: 'food', text: '煮溫泉蛋/玉米', icon: 'fas fa-egg'}, {type: 'chill', text: '免費足湯', icon: 'fas fa-hot-tub'}],
+                                    note: '記得先去租竹簍，建議自備毛巾擦腳。'
+                                },
+                                {
+                                    time: '17:30', type: 'food', title: '晚餐：卜肉或海產', location: '味珍香卜肉店', categoryLabel: '美食',
+                                    tags: [{type: 'food', text: '蔥油餅', icon: 'fas fa-cookie'}, {type: 'info', text: '甲富哥需訂位', icon: 'fas fa-phone'}],
+                                    note: '回程經過三星鄉順路吃。'
+                                }
+                            ]
+                        },
+                        {
+                            date: '12/15 (日)',
+                            events: [
+                                {
+                                    time: '10:30', type: 'spot', title: '蘭陽動植物王國', location: '蘭陽動植物王國', categoryLabel: '景點',
+                                    tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}, {type: 'highlight', text: '袋鼠', icon: 'fas fa-paw'}],
+                                    note: '新開幕熱門景點，就在往宜蘭市順路上。'
+                                },
+                                {
+                                    time: '12:30', type: 'food', title: '微笑食客', location: '微笑食客', categoryLabel: '午餐',
+                                    tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}],
+                                    note: '已預定目標，氣氛溫馨。'
+                                },
+                                {
+                                    time: '15:00', type: 'stay', title: '山形閣 Check-in', location: '礁溪山形閣溫泉飯店', categoryLabel: '住宿',
+                                    tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}, {type: 'chill', text: '大眾裸湯', icon: 'fas fa-spa'}],
+                                    note: '入住後建議待在飯店享受設施，不要出門了！'
+                                },
+                                {
+                                    time: '18:00', type: 'food', title: '飯店晚餐/周邊', location: '礁溪山形閣溫泉飯店', categoryLabel: '晚餐',
+                                    tags: [{type: 'food', text: '米澤廳', icon: 'fas fa-wine-glass'}, {type: 'spot', text: '空ㄟ農場夜景', icon: 'fas fa-star'}],
+                                    note: '想看百萬夜景可去空ㄟ農場 (需搭接駁車)。'
+                                }
+                            ]
+                        },
+                        {
+                            date: '12/16 (一)',
+                            events: [
+                                {
+                                    time: '09:00', type: 'food', title: '飯店豪華早餐', location: '礁溪山形閣溫泉飯店', categoryLabel: '早餐',
+                                    tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}],
+                                    note: '慢慢享用至11點退房。'
+                                },
+                                {
+                                    time: '11:30', type: 'food', title: '礁溪甕窯雞', location: '福哥石窯雞', categoryLabel: '午餐',
+                                    tags: [{type: 'food', text: '皮脆肉嫩', icon: 'fas fa-drumstick-bite'}],
+                                    note: '福哥或火山爆發雞都不錯。'
+                                },
+                                {
+                                    time: '13:00', type: 'shop', title: '伴手禮 & 返程', location: '奕順軒礁溪店', categoryLabel: '購物',
+                                    tags: [{type: 'shop', text: '奶凍捲', icon: 'fas fa-gift'}, {type: 'shop', text: '鴨賞', icon: 'fas fa-gift'}],
+                                    note: '買完直接上國五，避開下午塞車。'
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            computed: {
+                totalBudget() {
+                    return this.expenses.reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
+                }
+            },
+            methods: {
+                getCategoryColor(type) {
+                    const colors = {
+                        stay: 'bg-jp-blue',
+                        food: 'bg-jp-accent',
+                        spot: 'bg-jp-green',
+                        trans: 'bg-gray-400',
+                        shop: 'bg-yellow-500'
+                    };
+                    return colors[type] || 'bg-gray-400';
+                },
+                getTagStyle(type) {
+                    const styles = {
+                        highlight: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                        food: 'bg-orange-50 text-orange-700 border-orange-200',
+                        warn: 'bg-red-50 text-red-700 border-red-200',
+                        info: 'bg-blue-50 text-blue-700 border-blue-200',
+                        photo: 'bg-purple-50 text-purple-700 border-purple-200',
+                        chill: 'bg-teal-50 text-teal-700 border-teal-200',
+                        shop: 'bg-pink-50 text-pink-700 border-pink-200'
+                    };
+                    return styles[type] || 'bg-gray-50 text-gray-600';
+                },
+                addExpense() {
+                    if (!this.newExpense.item || !this.newExpense.amount) return;
+                    this.expenses.push({ ...this.newExpense });
+                    this.newExpense.item = '';
+                    this.newExpense.amount = '';
+                    this.saveExpenses();
+                },
+                removeExpense(idx) {
+                    this.expenses.splice(idx, 1);
+                    this.saveExpenses();
+                },
+                saveExpenses() {
+                    localStorage.setItem('tripExpenses', JSON.stringify(this.expenses));
+                },
+                formatCurrency(val) {
+                    return '$' + val.toLocaleString();
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
