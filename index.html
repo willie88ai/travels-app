@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宜蘭冬日慢旅 (雲端協作版)</title>
+    <title>宜蘭冬日慢旅 (回憶典藏版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@400;700&display=swap');
@@ -15,9 +18,11 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); }
-        /* 編輯模式下的輸入框樣式 */
         .edit-input { background: #fff; border: 2px solid #C66B3D; border-radius: 4px; padding: 2px 4px; width: 100%; color: #333; font-size: 0.9rem; }
         .edit-input-time { width: 60px; text-align: center; }
+        /* 上傳讀取條動畫 */
+        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #C66B3D; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
     <script>
         tailwind.config = {
@@ -68,11 +73,19 @@
                          class="glass-card rounded-2xl p-5 relative overflow-hidden transition-all duration-200">
                         <div class="absolute left-0 top-0 bottom-0 w-1" :class="getCategoryColor(item.type)"></div>
 
-                        <div class="flex justify-between items-start mb-2">
+                        <button v-if="isEditing" @click="deleteEvent(currentDay, idx)" class="absolute right-2 top-2 text-red-400 p-2 z-20">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+
+                        <div class="flex justify-between items-start mb-2 pr-6">
                             <div class="flex items-center space-x-2 w-full">
                                 <input v-if="isEditing" v-model="item.time" class="edit-input edit-input-time font-bold" placeholder="時間">
                                 <span v-else class="px-2 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-600">{{ item.time }}</span>
-                                <span class="text-xs text-gray-400 border border-gray-200 px-1 rounded whitespace-nowrap">{{ item.categoryLabel }}</span>
+                                
+                                <select v-if="isEditing" v-model="item.categoryLabel" class="edit-input w-24 text-xs">
+                                    <option>景點</option><option>美食</option><option>住宿</option><option>交通</option><option>夜景</option><option>購物</option>
+                                </select>
+                                <span v-else class="text-xs text-gray-400 border border-gray-200 px-1 rounded whitespace-nowrap">{{ item.categoryLabel }}</span>
                             </div>
                             <a v-if="!isEditing" :href="'https://www.google.com/maps/search/?api=1&query=' + item.location" target="_blank" 
                                class="text-jp-blue hover:bg-blue-50 p-2 rounded-full transition">
@@ -80,12 +93,12 @@
                             </a>
                         </div>
 
-                        <div class="mb-1">
+                        <div class="mb-1 pr-4">
                             <input v-if="isEditing" v-model="item.title" class="edit-input font-bold text-lg mb-1" placeholder="行程標題">
                             <h3 v-else class="text-lg font-bold mb-1">{{ item.title }}</h3>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 pr-4">
                             <input v-if="isEditing" v-model="item.location" class="edit-input text-sm mb-1" placeholder="地點(導航用)">
                             <p v-else class="text-sm text-gray-500 mb-3 flex items-center">
                                 <i class="fas fa-map-marker-alt text-xs mr-1 w-4 text-center"></i> {{ item.location }}
@@ -104,7 +117,41 @@
                                 <i class="fas fa-info-circle text-jp-accent mr-1"></i> {{ item.note }}
                             </p>
                         </div>
+
+                        <div class="mt-4 pt-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-xs font-bold text-gray-400"><i class="fas fa-photo-video mr-1"></i> 回憶集</h4>
+                                <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs transition flex items-center">
+                                    <span v-if="uploadingId === item.id" class="loader mr-1"></span>
+                                    <span v-else><i class="fas fa-plus mr-1"></i></span>
+                                    新增照片/影片
+                                    <input type="file" class="hidden" accept="image/*,video/*" @change="handleFileUpload($event, currentDay, idx)" :disabled="uploadingId === item.id">
+                                </label>
+                            </div>
+
+                            <div v-if="item.media && item.media.length > 0" class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                                <div v-for="(media, mIdx) in item.media" :key="mIdx" class="relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-black group">
+                                    
+                                    <img v-if="media.type === 'image'" :src="media.url" class="w-full h-full object-cover" @click="openMedia(media.url, 'image')">
+                                    
+                                    <video v-if="media.type === 'video'" :src="media.url" class="w-full h-full object-cover opacity-80" @click="openMedia(media.url, 'video')"></video>
+                                    <i v-if="media.type === 'video'" class="fas fa-play absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xl pointer-events-none"></i>
+
+                                    <button @click="deleteMedia(currentDay, idx, mIdx)" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition">×</button>
+                                </div>
+                            </div>
+                            <div v-else class="text-[10px] text-gray-300 italic py-1">
+                                尚無回憶，點擊上方按鈕上傳。
+                            </div>
+                        </div>
+
                     </div>
+                    
+                    <button v-if="isEditing" @click="addNewEvent(currentDay)" class="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 font-bold hover:bg-white hover:border-jp-accent hover:text-jp-accent transition">
+                        <i class="fas fa-plus-circle mr-2"></i> 新增行程
+                    </button>
+
+                    <div class="h-10"></div>
                 </div>
             </div>
 
@@ -157,6 +204,13 @@
                 <span class="text-[10px] font-bold">記帳</span>
             </button>
         </nav>
+
+        <div v-if="previewMedia.url" class="fixed inset-0 z-[60] bg-black bg-opacity-95 flex items-center justify-center p-4" @click="previewMedia = {}">
+            <img v-if="previewMedia.type === 'image'" :src="previewMedia.url" class="max-w-full max-h-full rounded-lg">
+            <video v-if="previewMedia.type === 'video'" :src="previewMedia.url" controls autoplay class="max-w-full max-h-full rounded-lg"></video>
+            <button class="absolute top-4 right-4 text-white text-2xl">×</button>
+        </div>
+
     </div>
 
     <script>
@@ -164,17 +218,20 @@
         // 🔥 重要：請在這裡填入你的 Firebase Config
         // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyAv9Q6XuB-XL8s5-p8_xU6iTHMpm9Toy5E",
-            authDomain: "yilan-trip-c1069.firebaseapp.com",
-            projectId: "yilan-trip-c1069",
-            storageBucket: "yilan-trip-c1069.firebasestorage.app",
-            messagingSenderId: "754631881000",
-            appId: "1:754631881000:web:8d25bf3cad2e800557201d"
+            apiKey: "你的_API_KEY",
+            authDomain: "你的專案ID.firebaseapp.com",
+            projectId: "你的專案ID",
+            storageBucket: "你的專案ID.appspot.com", // 必須要有這一行才能上傳！
+            messagingSenderId: "...",
+            appId: "..."
         };
 
         // 初始化 Firebase
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         const { createApp } = Vue
 
@@ -184,52 +241,50 @@
                     currentTab: 'schedule',
                     currentDay: 0,
                     isLoading: true,
-                    isEditing: false, // 編輯模式狀態
+                    isEditing: false,
+                    uploadingId: null, // 正在上傳的 Event ID
+                    previewMedia: {}, // 預覽媒體
                     newExpense: { item: '', amount: '' },
                     weather: { temp: '--', desc: '載入中...', rainProb: '', icon: 'fas fa-spinner fa-spin text-gray-400', bgClass: 'bg-gray-50' },
                     
-                    // 這是會同步到雲端的完整資料物件
-                    tripData: {
-                        days: [],
-                        expenses: []
-                    },
+                    tripData: { days: [], expenses: [] },
 
-                    // 🔥 最新版預設行程 (如果雲端是空的，會用這組初始化)
+                    // 預設行程
                     defaultDays: [
                         {
                             date: '12/13 (六)',
                             events: [
-                                { time: '10:30', type: 'spot', title: '蘭陽動植物王國', location: '蘭陽動植物王國', categoryLabel: '景點', tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}, {type: 'photo', text: '袋鼠/羊駝', icon: 'fas fa-camera'}], note: '第一站先來療癒一下！' },
-                                { time: '14:00', type: 'stay', title: '日光綠築 Check-in', location: '日光綠築 LOHERB', categoryLabel: '住宿', tags: [{type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}], note: '享受渡假氛圍，趁天亮拍美照。' },
-                                { time: '16:30', type: 'spot', title: '冬山河生態綠舟', location: '冬山河生態綠舟', categoryLabel: '景點', tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}], note: '傍晚點燈後非常浪漫。' },
-                                { time: '18:00', type: 'food', title: '香廚臭豆腐', location: '香廚米粉羹', categoryLabel: '小吃', tags: [{type: 'food', text: '有機綠臭豆腐', icon: 'fas fa-utensils'}], note: '在地人推薦，必吃臭豆腐跟米粉羹。' },
-                                { time: '19:30', type: 'food', title: '羅東夜市', location: '羅東夜市', categoryLabel: '晚餐', tags: [{type: 'food', text: '阿灶伯', icon: 'fas fa-utensils'}, {type: 'food', text: '小春卜肉', icon: 'fas fa-drumstick-bite'}], note: '人多小心錢包，建議停立體停車場。' }
+                                { id: 1, time: '10:30', type: 'spot', title: '蘭陽動植物王國', location: '蘭陽動植物王國', categoryLabel: '景點', tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}], note: '第一站先來療癒一下！', media: [] },
+                                { id: 2, time: '14:00', type: 'stay', title: '日光綠築 Check-in', location: '日光綠築 LOHERB', categoryLabel: '住宿', tags: [{type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}], note: '享受渡假氛圍，趁天亮拍美照。', media: [] },
+                                { id: 3, time: '16:30', type: 'spot', title: '冬山河生態綠舟', location: '冬山河生態綠舟', categoryLabel: '景點', tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}], note: '傍晚點燈後非常浪漫。', media: [] },
+                                { id: 4, time: '18:00', type: 'food', title: '香廚臭豆腐', location: '香廚米粉羹', categoryLabel: '小吃', tags: [{type: 'food', text: '有機綠臭豆腐', icon: 'fas fa-utensils'}], note: '在地人推薦，必吃臭豆腐跟米粉羹。', media: [] },
+                                { id: 5, time: '19:30', type: 'food', title: '羅東夜市', location: '羅東夜市', categoryLabel: '晚餐', tags: [{type: 'food', text: '阿灶伯', icon: 'fas fa-utensils'}], note: '人多小心錢包，建議停立體停車場。', media: [] }
                             ]
                         },
                         {
                             date: '12/14 (日)',
                             events: [
-                                { time: '08:00', type: 'trans', title: '出發前往太平山', location: '太平山國家森林遊樂區', categoryLabel: '交通', tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}], note: '車程 1.5hr，山路蜿蜒。' },
-                                { time: '09:30', type: 'spot', title: '見晴懷古步道', location: '見晴懷古步道', categoryLabel: '景點', tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}], note: '霧氣重記得保暖。' },
-                                { time: '14:30', type: 'spot', title: '清水地熱公園', location: '清水地熱公園', categoryLabel: '體驗', tags: [{type: 'food', text: '煮溫泉蛋', icon: 'fas fa-egg'}, {type: 'chill', text: '免費足湯', icon: 'fas fa-hot-tub'}], note: '記得租竹簍，自備毛巾。' },
-                                { time: '18:30', type: 'food', title: '微笑食客', location: '微笑食客', categoryLabel: '晚餐', tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}], note: '已預定目標，氣氛溫馨。' },
-                                { time: '20:30', type: 'spot', title: '空ㄟ農場夜景', location: '空ㄟ農場', categoryLabel: '夜景', tags: [{type: 'photo', text: '百萬夜景', icon: 'fas fa-star'}], note: '需在山下搭乘接駁車上山，披薩好吃。' }
+                                { id: 6, time: '08:00', type: 'trans', title: '出發前往太平山', location: '太平山國家森林遊樂區', categoryLabel: '交通', tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}], note: '車程 1.5hr，山路蜿蜒。', media: [] },
+                                { id: 7, time: '09:30', type: 'spot', title: '見晴懷古步道', location: '見晴懷古步道', categoryLabel: '景點', tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}], note: '霧氣重記得保暖。', media: [] },
+                                { id: 8, time: '14:30', type: 'spot', title: '清水地熱公園', location: '清水地熱公園', categoryLabel: '體驗', tags: [{type: 'food', text: '煮溫泉蛋', icon: 'fas fa-egg'}], note: '記得租竹簍，自備毛巾。', media: [] },
+                                { id: 9, time: '18:30', type: 'food', title: '微笑食客', location: '微笑食客', categoryLabel: '晚餐', tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}], note: '已預定目標，氣氛溫馨。', media: [] },
+                                { id: 10, time: '20:30', type: 'spot', title: '空ㄟ農場夜景', location: '空ㄟ農場', categoryLabel: '夜景', tags: [{type: 'photo', text: '百萬夜景', icon: 'fas fa-star'}], note: '需在山下搭乘接駁車上山。', media: [] }
                             ]
                         },
                         {
                             date: '12/15 (一)',
                             events: [
-                                { time: '12:00', type: 'food', title: '塭底烤魚', location: '塭底烤魚', categoryLabel: '午餐', tags: [{type: 'food', text: '鹽烤魚', icon: 'fas fa-fish'}], note: '魚很大隻，建議提早訂位。' },
-                                { time: '15:00', type: 'stay', title: '山形閣 Check-in', location: '礁溪山形閣溫泉飯店', categoryLabel: '住宿', tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}, {type: 'chill', text: '大眾裸湯', icon: 'fas fa-spa'}], note: '入住後就待在飯店享受設施！' },
-                                { time: '18:00', type: 'food', title: '飯店晚餐/休息', location: '礁溪山形閣溫泉飯店', categoryLabel: '晚餐', tags: [{type: 'chill', text: '放鬆', icon: 'fas fa-wine-glass'}], note: '不想出門就叫外送或吃飯店。' }
+                                { id: 11, time: '12:00', type: 'food', title: '塭底烤魚', location: '塭底烤魚', categoryLabel: '午餐', tags: [{type: 'food', text: '鹽烤魚', icon: 'fas fa-fish'}], note: '魚很大隻，建議提早訂位。', media: [] },
+                                { id: 12, time: '15:00', type: 'stay', title: '山形閣 Check-in', location: '礁溪山形閣溫泉飯店', categoryLabel: '住宿', tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}], note: '入住後就待在飯店享受設施！', media: [] },
+                                { id: 13, time: '18:00', type: 'food', title: '飯店晚餐/休息', location: '礁溪山形閣溫泉飯店', categoryLabel: '晚餐', tags: [{type: 'chill', text: '放鬆', icon: 'fas fa-wine-glass'}], note: '不想出門就叫外送或吃飯店。', media: [] }
                             ]
                         },
                         {
                             date: '12/16 (二)',
                             events: [
-                                { time: '09:00', type: 'food', title: '飯店豪華早餐', location: '礁溪山形閣溫泉飯店', categoryLabel: '早餐', tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}], note: '慢慢享用至11點退房。' },
-                                { time: '11:00', type: 'trans', title: '退房 & 前往台中', location: '屋馬燒肉', categoryLabel: '交通', tags: [{type: 'info', text: '長途車程', icon: 'fas fa-car'}], note: '直奔台中吃燒肉！' },
-                                { time: '13:30', type: 'food', title: '屋馬燒肉', location: '屋馬燒肉', categoryLabel: '午餐', tags: [{type: 'highlight', text: '雞湯必喝', icon: 'fas fa-fire'}], note: '完美的旅程Ending。' }
+                                { id: 14, time: '09:00', type: 'food', title: '飯店豪華早餐', location: '礁溪山形閣溫泉飯店', categoryLabel: '早餐', tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}], note: '慢慢享用至11點退房。', media: [] },
+                                { id: 15, time: '11:00', type: 'trans', title: '退房 & 前往台中', location: '屋馬燒肉', categoryLabel: '交通', tags: [{type: 'info', text: '長途車程', icon: 'fas fa-car'}], note: '直奔台中吃燒肉！', media: [] },
+                                { id: 16, time: '13:30', type: 'food', title: '屋馬燒肉', location: '屋馬燒肉', categoryLabel: '午餐', tags: [{type: 'highlight', text: '雞湯必喝', icon: 'fas fa-fire'}], note: '完美的旅程Ending。', media: [] }
                             ]
                         }
                     ]
@@ -248,85 +303,145 @@
             methods: {
                 // 初始化雲端同步
                 initRealtimeSync() {
-                    // 使用固定的文件ID 'yilan2025' 確保兩人連到同一個
                     const docRef = db.collection('trips').doc('yilan2025');
-                    
-                    // 監聽模式 (onSnapshot)：對方一改，我這裡馬上變
                     docRef.onSnapshot((doc) => {
                         this.isLoading = false;
                         if (doc.exists) {
-                            console.log("雲端資料更新:", doc.data());
+                            console.log("Sync Update");
                             this.tripData = doc.data();
                         } else {
-                            // 如果是第一次使用（雲端沒資料），把上面的 defaultDays 寫進去
-                            console.log("初始化雲端資料庫...");
                             this.tripData.days = this.defaultDays;
                             this.saveToCloud(); 
                         }
                     });
                 },
                 
-                // 儲存資料到雲端
                 saveToCloud() {
-                    this.isLoading = true;
+                    // 自動儲存時不顯示全域 Loading，只在 Console log
                     db.collection('trips').doc('yilan2025').set(this.tripData)
-                        .then(() => {
-                            this.isLoading = false;
-                            console.log("儲存成功");
-                        })
-                        .catch((error) => {
-                            console.error("儲存失敗", error);
-                            alert("儲存失敗，請檢查網路");
-                        });
+                        .catch((error) => alert("儲存失敗: " + error.message));
                 },
 
-                // 切換編輯模式
                 toggleEdit() {
-                    // 如果是從編輯狀態->關閉，代表編輯完成，要存檔
-                    if (this.isEditing) {
-                        this.saveToCloud();
-                    }
+                    if (this.isEditing) this.saveToCloud();
                     this.isEditing = !this.isEditing;
                 },
 
-                // 天氣 API
+                // ==========================
+                // 🔥 新增/刪除行程功能
+                // ==========================
+                addNewEvent(dayIndex) {
+                    const newId = Date.now(); // 產生唯一 ID
+                    this.tripData.days[dayIndex].events.push({
+                        id: newId,
+                        time: '12:00',
+                        type: 'spot',
+                        title: '新行程',
+                        location: '',
+                        categoryLabel: '一般',
+                        tags: [],
+                        note: '',
+                        media: []
+                    });
+                    // 自動進入編輯模式並儲存
+                    this.isEditing = true;
+                    this.saveToCloud();
+                },
+
+                deleteEvent(dayIndex, eventIdx) {
+                    if(confirm('確定要刪除這個行程嗎？')) {
+                        this.tripData.days[dayIndex].events.splice(eventIdx, 1);
+                        this.saveToCloud();
+                    }
+                },
+
+                // ==========================
+                // 📸 媒體上傳功能
+                // ==========================
+                async handleFileUpload(event, dayIdx, eventIdx) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const eventItem = this.tripData.days[dayIdx].events[eventIdx];
+                    this.uploadingId = eventItem.id; // 設定 Loading 狀態
+
+                    try {
+                        // 1. 建立 Storage 路徑: trips/yilan2025/files/時間戳_檔名
+                        const storageRef = storage.ref(`trips/yilan2025/files/${Date.now()}_${file.name}`);
+                        
+                        // 2. 上傳檔案
+                        const snapshot = await storageRef.put(file);
+                        
+                        // 3. 取得公開連結
+                        const downloadURL = await snapshot.ref.getDownloadURL();
+
+                        // 4. 判斷類型
+                        const type = file.type.startsWith('video') ? 'video' : 'image';
+
+                        // 5. 存回 tripData
+                        if (!eventItem.media) eventItem.media = [];
+                        eventItem.media.push({
+                            url: downloadURL,
+                            type: type,
+                            name: file.name
+                        });
+
+                        // 6. 同步到 Firestore
+                        this.saveToCloud();
+
+                    } catch (error) {
+                        console.error(error);
+                        alert("上傳失敗：" + error.message + "\n請確認 Firebase Storage 是否已開啟 Test Mode。");
+                    } finally {
+                        this.uploadingId = null; // 解除 Loading
+                    }
+                },
+
+                deleteMedia(dayIdx, eventIdx, mediaIdx) {
+                    if(confirm('確定要刪除這張照片/影片嗎？')) {
+                        // 這裡只刪除資料庫連結，實際檔案為了簡化不刪除 Storage (避免複雜權限問題)
+                        this.tripData.days[dayIdx].events[eventIdx].media.splice(mediaIdx, 1);
+                        this.saveToCloud();
+                    }
+                },
+
+                openMedia(url, type) {
+                    this.previewMedia = { url, type };
+                },
+
+                // 其他輔助功能
                 async fetchRealTimeWeather() {
                     try {
-                        const lat = 24.82; const long = 121.77;
-                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${long}&current=temperature_2m,weather_code,precipitation_probability&timezone=Asia%2FTaipei`;
-                        const response = await fetch(url);
-                        const data = await response.json();
-                        const current = data.current;
-                        const wmo = this.getWeatherInfo(current.weather_code);
+                        const url = `https://api.open-meteo.com/v1/forecast?latitude=24.82&longitude=121.77&current=temperature_2m,weather_code,precipitation_probability&timezone=Asia%2FTaipei`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        const wmo = this.getWeatherInfo(data.current.weather_code);
                         this.weather = {
-                            temp: Math.round(current.temperature_2m) + '°C',
+                            temp: Math.round(data.current.temperature_2m) + '°C',
                             desc: wmo.desc,
-                            rainProb: '降雨機率 ' + (current.precipitation_probability || 0) + '%',
+                            rainProb: '降雨 ' + (data.current.precipitation_probability || 0) + '%',
                             icon: wmo.icon,
                             bgClass: wmo.bg
                         };
                     } catch (e) { console.error(e); }
                 },
 
-                // 記帳相關
                 addExpense() {
                     if (!this.newExpense.item || !this.newExpense.amount) return;
                     if (!this.tripData.expenses) this.tripData.expenses = [];
                     this.tripData.expenses.push({ ...this.newExpense });
-                    this.newExpense.item = '';
-                    this.newExpense.amount = '';
-                    this.saveToCloud(); // 立即同步
+                    this.newExpense.item = ''; this.newExpense.amount = '';
+                    this.saveToCloud();
                 },
                 removeExpense(idx) {
                     this.tripData.expenses.splice(idx, 1);
-                    this.saveToCloud(); // 立即同步
+                    this.saveToCloud();
                 },
-
-                // 輔助函式
+                
+                // Styles & Helpers
                 getWeatherInfo(code) {
-                    if (code === 0) return { desc: '晴朗', icon: 'fas fa-sun text-orange-400', bg: 'bg-orange-50' };
-                    if (code >= 1 && code <= 3) return { desc: '多雲', icon: 'fas fa-cloud-sun text-blue-400', bg: 'bg-gray-50' };
-                    if (code >= 51 && code <= 67) return { desc: '小雨', icon: 'fas fa-cloud-rain text-blue-500', bg: 'bg-blue-50' };
+                    if (code <= 3) return { desc: '多雲', icon: 'fas fa-cloud-sun text-orange-400', bg: 'bg-orange-50' };
+                    if (code >= 51) return { desc: '有雨', icon: 'fas fa-cloud-rain text-blue-500', bg: 'bg-blue-50' };
                     return { desc: '陰天', icon: 'fas fa-cloud text-gray-500', bg: 'bg-gray-50' };
                 },
                 getCategoryColor(type) {
@@ -334,15 +449,7 @@
                     return colors[type] || 'bg-gray-400';
                 },
                 getTagStyle(type) {
-                    const styles = {
-                        highlight: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-                        food: 'bg-orange-50 text-orange-700 border-orange-200',
-                        warn: 'bg-red-50 text-red-700 border-red-200',
-                        info: 'bg-blue-50 text-blue-700 border-blue-200',
-                        photo: 'bg-purple-50 text-purple-700 border-purple-200',
-                        chill: 'bg-teal-50 text-teal-700 border-teal-200',
-                        shop: 'bg-pink-50 text-pink-700 border-pink-200'
-                    };
+                    const styles = { highlight: 'bg-yellow-50 text-yellow-700', food: 'bg-orange-50 text-orange-700', chill: 'bg-teal-50 text-teal-700' };
                     return styles[type] || 'bg-gray-50 text-gray-600';
                 },
                 formatCurrency(val) { return '$' + val.toLocaleString(); }
