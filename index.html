@@ -3,42 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宜蘭冬日慢旅 12.13-16</title>
+    <title>宜蘭冬日慢旅 (雲端協作版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@400;700&display=swap');
-        
-        body {
-            font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
-            background-color: #F5F5F0;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
+        body { font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif; background-color: #F5F5F0; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); }
+        /* 編輯模式下的輸入框樣式 */
+        .edit-input { background: #fff; border: 2px solid #C66B3D; border-radius: 4px; padding: 2px 4px; width: 100%; color: #333; font-size: 0.9rem; }
+        .edit-input-time { width: 60px; text-align: center; }
     </style>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'jp-black': '#2C2C2C',
-                        'jp-gray': '#8E8E8E',
-                        'jp-beige': '#F5F5F0',
-                        'jp-accent': '#C66B3D',
-                        'jp-green': '#5F7161',
-                        'jp-blue': '#6D8494',
-                    }
-                }
-            }
+            theme: { extend: { colors: { 'jp-black': '#2C2C2C', 'jp-gray': '#8E8E8E', 'jp-beige': '#F5F5F0', 'jp-accent': '#C66B3D', 'jp-green': '#5F7161', 'jp-blue': '#6D8494' } } }
         }
     </script>
 </head>
@@ -48,85 +31,79 @@
         <header class="pt-12 pb-4 px-6 bg-white rounded-b-3xl shadow-sm sticky top-0 z-10">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-widest text-jp-black">宜蘭冬旅</h1>
+                    <h1 class="text-2xl font-bold tracking-widest text-jp-black">宜蘭冬旅 <span v-if="isEditing" class="text-sm text-jp-accent animate-pulse">(編輯中)</span></h1>
                     <p class="text-xs text-jp-gray mt-1 tracking-wider">Dec 13 - 16, 2025</p>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-jp-green text-white flex items-center justify-center shadow-md">
-                    <i class="fas fa-leaf"></i>
+                <div class="flex items-center gap-2">
+                    <div v-if="isLoading" class="text-xs text-gray-400"><i class="fas fa-sync fa-spin"></i></div>
+                    <div class="w-10 h-10 rounded-full bg-jp-green text-white flex items-center justify-center shadow-md">
+                        <i class="fas fa-leaf"></i>
+                    </div>
                 </div>
             </div>
             
             <div class="mt-4 flex items-center rounded-xl p-3 text-sm transition-colors duration-500" :class="weather.bgClass">
                 <i :class="weather.icon" class="mr-3 text-lg transition-all duration-500"></i>
                 <div class="flex-1">
-                    <span class="block font-bold">
-                        宜蘭現況：{{ weather.desc }} {{ weather.temp }}
-                    </span>
-                    <span class="text-xs text-gray-500">
-                        {{ weather.rainProb }}
-                    </span>
+                    <span class="block font-bold">宜蘭現況：{{ weather.desc }} {{ weather.temp }}</span>
+                    <span class="text-xs text-gray-500">{{ weather.rainProb }}</span>
                 </div>
-                <span v-if="weather.temp !== '--'" class="text-xs px-2 py-1 rounded bg-white bg-opacity-50 text-gray-600">
-                    即時
-                </span>
             </div>
         </header>
 
         <main class="p-4 space-y-4">
-
+            
             <div v-if="currentTab === 'schedule'">
                 <div class="flex space-x-2 overflow-x-auto no-scrollbar mb-4 pb-1">
-                    <button 
-                        v-for="(day, index) in days" 
-                        :key="index"
-                        @click="currentDay = index"
+                    <button v-for="(day, index) in tripData.days" :key="index" @click="currentDay = index"
                         :class="currentDay === index ? 'bg-jp-black text-white shadow-lg' : 'bg-white text-gray-400'"
-                        class="flex-shrink-0 px-5 py-3 rounded-2xl transition-all duration-300 flex flex-col items-center min-w-[80px]"
-                    >
+                        class="flex-shrink-0 px-5 py-3 rounded-2xl transition-all duration-300 flex flex-col items-center min-w-[80px]">
                         <span class="text-xs font-light">Day {{ index + 1 }}</span>
                         <span class="text-lg font-bold">{{ day.date }}</span>
                     </button>
                 </div>
 
-                <div class="space-y-4 pb-20">
-                    <div v-for="(item, idx) in days[currentDay].events" :key="idx" 
-                         class="glass-card rounded-2xl p-5 relative overflow-hidden transition-transform active:scale-95 duration-200">
-                        
+                <div v-if="tripData.days && tripData.days.length > 0" class="space-y-4 pb-20">
+                    <div v-for="(item, idx) in tripData.days[currentDay].events" :key="idx" 
+                         class="glass-card rounded-2xl p-5 relative overflow-hidden transition-all duration-200">
                         <div class="absolute left-0 top-0 bottom-0 w-1" :class="getCategoryColor(item.type)"></div>
 
                         <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center space-x-2">
-                                <span class="px-2 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-600">{{ item.time }}</span>
-                                <span class="text-xs text-gray-400 border border-gray-200 px-1 rounded">{{ item.categoryLabel }}</span>
+                            <div class="flex items-center space-x-2 w-full">
+                                <input v-if="isEditing" v-model="item.time" class="edit-input edit-input-time font-bold" placeholder="時間">
+                                <span v-else class="px-2 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-600">{{ item.time }}</span>
+                                <span class="text-xs text-gray-400 border border-gray-200 px-1 rounded whitespace-nowrap">{{ item.categoryLabel }}</span>
                             </div>
-                            <a :href="'https://www.google.com/maps/search/?api=1&query=' + item.location" target="_blank" 
+                            <a v-if="!isEditing" :href="'https://www.google.com/maps/search/?api=1&query=' + item.location" target="_blank" 
                                class="text-jp-blue hover:bg-blue-50 p-2 rounded-full transition">
                                 <i class="fas fa-location-arrow text-lg"></i>
                             </a>
                         </div>
 
-                        <h3 class="text-lg font-bold mb-1">{{ item.title }}</h3>
-                        <p class="text-sm text-gray-500 mb-3 flex items-center">
-                            <i class="fas fa-map-marker-alt text-xs mr-1 w-4 text-center"></i> {{ item.location }}
-                        </p>
+                        <div class="mb-1">
+                            <input v-if="isEditing" v-model="item.title" class="edit-input font-bold text-lg mb-1" placeholder="行程標題">
+                            <h3 v-else class="text-lg font-bold mb-1">{{ item.title }}</h3>
+                        </div>
 
-                        <div class="flex flex-wrap gap-2 mt-3">
-                            <span v-for="tag in item.tags" :key="tag.text" 
-                                  :class="getTagStyle(tag.type)"
-                                  class="text-xs px-2 py-1 rounded-lg border flex items-center">
+                        <div class="mb-3">
+                            <input v-if="isEditing" v-model="item.location" class="edit-input text-sm mb-1" placeholder="地點(導航用)">
+                            <p v-else class="text-sm text-gray-500 mb-3 flex items-center">
+                                <i class="fas fa-map-marker-alt text-xs mr-1 w-4 text-center"></i> {{ item.location }}
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mt-3 mb-2">
+                            <span v-for="tag in item.tags" :key="tag.text" :class="getTagStyle(tag.type)" class="text-xs px-2 py-1 rounded-lg border flex items-center">
                                 <i :class="tag.icon" class="mr-1"></i> {{ tag.text }}
                             </span>
                         </div>
 
-                        <div v-if="item.note" class="mt-3 pt-3 border-t border-dashed border-gray-200">
-                            <p class="text-xs text-gray-500 leading-relaxed">
+                        <div class="mt-3 pt-3 border-t border-dashed border-gray-200">
+                            <textarea v-if="isEditing" v-model="item.note" class="edit-input text-xs" rows="2" placeholder="備註"></textarea>
+                            <p v-else class="text-xs text-gray-500 leading-relaxed">
                                 <i class="fas fa-info-circle text-jp-accent mr-1"></i> {{ item.note }}
                             </p>
                         </div>
-                    </div>
-                    
-                    <div class="text-center text-gray-400 text-xs py-4">
-                        <p>End of Day {{ currentDay + 1 }}</p>
                     </div>
                 </div>
             </div>
@@ -138,7 +115,7 @@
                 </div>
 
                 <div class="bg-white rounded-2xl p-4 shadow-sm mb-4">
-                    <h3 class="text-sm font-bold mb-3 text-gray-600">新增支出</h3>
+                    <h3 class="text-sm font-bold mb-3 text-gray-600">新增支出 (共同編輯)</h3>
                     <div class="flex space-x-2 mb-2">
                         <input v-model="newExpense.item" placeholder="項目" class="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 ring-jp-green">
                         <input v-model="newExpense.amount" type="number" placeholder="$" class="w-24 bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 ring-jp-green">
@@ -149,20 +126,25 @@
                 </div>
 
                 <div class="space-y-2">
-                    <div v-for="(expense, idx) in expenses" :key="idx" class="bg-white px-4 py-3 rounded-xl flex justify-between items-center shadow-sm">
+                    <div v-for="(expense, idx) in tripData.expenses" :key="idx" class="bg-white px-4 py-3 rounded-xl flex justify-between items-center shadow-sm">
                         <span class="text-sm font-medium">{{ expense.item }}</span>
                         <div class="flex items-center space-x-3">
                             <span class="font-mono font-bold text-jp-green">{{ formatCurrency(expense.amount) }}</span>
                             <button @click="removeExpense(idx)" class="text-gray-300 hover:text-red-400"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
-                    <div v-if="expenses.length === 0" class="text-center text-gray-400 text-xs py-8">
+                    <div v-if="!tripData.expenses || tripData.expenses.length === 0" class="text-center text-gray-400 text-xs py-8">
                         目前還沒有記帳喔
                     </div>
                 </div>
             </div>
-
         </main>
+
+        <button v-if="currentTab === 'schedule'" @click="toggleEdit" 
+                :class="isEditing ? 'bg-jp-accent rotate-0' : 'bg-jp-black'"
+                class="fixed bottom-24 right-6 w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center transition-all duration-300 z-50 text-xl">
+            <i :class="isEditing ? 'fas fa-save' : 'fas fa-pen'"></i>
+        </button>
 
         <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-8 py-3 flex justify-around items-center z-50 max-w-md mx-auto rounded-t-2xl shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
             <button @click="currentTab = 'schedule'" :class="currentTab === 'schedule' ? 'text-jp-black' : 'text-gray-300'" class="flex flex-col items-center transition">
@@ -175,10 +157,25 @@
                 <span class="text-[10px] font-bold">記帳</span>
             </button>
         </nav>
-
     </div>
 
     <script>
+        // ==========================================
+        // 🔥 重要：請在這裡填入你的 Firebase Config
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAv9Q6XuB-XL8s5-p8_xU6iTHMpm9Toy5E",
+            authDomain: "yilan-trip-c1069.firebaseapp.com",
+            projectId: "yilan-trip-c1069",
+            storageBucket: "yilan-trip-c1069.firebasestorage.app",
+            messagingSenderId: "754631881000",
+            appId: "1:754631881000:web:8d25bf3cad2e800557201d"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         const { createApp } = Vue
 
         createApp({
@@ -186,104 +183,53 @@
                 return {
                     currentTab: 'schedule',
                     currentDay: 0,
+                    isLoading: true,
+                    isEditing: false, // 編輯模式狀態
                     newExpense: { item: '', amount: '' },
-                    expenses: JSON.parse(localStorage.getItem('tripExpenses')) || [],
-                    weather: {
-                        temp: '--',
-                        desc: '載入中...',
-                        rainProb: '',
-                        icon: 'fas fa-spinner fa-spin text-gray-400', 
-                        bgClass: 'bg-gray-50'
+                    weather: { temp: '--', desc: '載入中...', rainProb: '', icon: 'fas fa-spinner fa-spin text-gray-400', bgClass: 'bg-gray-50' },
+                    
+                    // 這是會同步到雲端的完整資料物件
+                    tripData: {
+                        days: [],
+                        expenses: []
                     },
-                    days: [
+
+                    // 🔥 最新版預設行程 (如果雲端是空的，會用這組初始化)
+                    defaultDays: [
                         {
                             date: '12/13 (六)',
                             events: [
-                                {
-                                    time: '14:00', type: 'stay', title: '日光綠築 Check-in', location: '日光綠築 LOHERB', categoryLabel: '住宿',
-                                    tags: [{type: 'photo', text: '落羽松必拍', icon: 'fas fa-camera'}, {type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}],
-                                    note: '享受渡假氛圍，記得在天黑前多拍幾張情侶照。'
-                                },
-                                {
-                                    time: '16:30', type: 'spot', title: '冬山河生態綠舟', location: '冬山河生態綠舟', categoryLabel: '景點',
-                                    tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}],
-                                    note: '傍晚點燈後非常浪漫，適合散步。'
-                                },
-                                {
-                                    time: '18:30', type: 'food', title: '羅東夜市晚餐', location: '羅東夜市', categoryLabel: '美食',
-                                    tags: [{type: 'food', text: '阿灶伯羊肉', icon: 'fas fa-utensils'}, {type: 'food', text: '魏姐包心粉圓', icon: 'fas fa-ice-cream'}, {type: 'food', text: '小春卜肉', icon: 'fas fa-drumstick-bite'}],
-                                    note: '建議停在「羅東立體停車場」。人多小心錢包。'
-                                }
+                                { time: '10:30', type: 'spot', title: '蘭陽動植物王國', location: '蘭陽動植物王國', categoryLabel: '景點', tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}, {type: 'photo', text: '袋鼠/羊駝', icon: 'fas fa-camera'}], note: '第一站先來療癒一下！' },
+                                { time: '14:00', type: 'stay', title: '日光綠築 Check-in', location: '日光綠築 LOHERB', categoryLabel: '住宿', tags: [{type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}], note: '享受渡假氛圍，趁天亮拍美照。' },
+                                { time: '16:30', type: 'spot', title: '冬山河生態綠舟', location: '冬山河生態綠舟', categoryLabel: '景點', tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}], note: '傍晚點燈後非常浪漫。' },
+                                { time: '18:00', type: 'food', title: '香廚臭豆腐', location: '香廚米粉羹', categoryLabel: '小吃', tags: [{type: 'food', text: '有機綠臭豆腐', icon: 'fas fa-utensils'}], note: '在地人推薦，必吃臭豆腐跟米粉羹。' },
+                                { time: '19:30', type: 'food', title: '羅東夜市', location: '羅東夜市', categoryLabel: '晚餐', tags: [{type: 'food', text: '阿灶伯', icon: 'fas fa-utensils'}, {type: 'food', text: '小春卜肉', icon: 'fas fa-drumstick-bite'}], note: '人多小心錢包，建議停立體停車場。' }
                             ]
                         },
                         {
                             date: '12/14 (日)',
                             events: [
-                                {
-                                    time: '08:00', type: 'trans', title: '出發前往太平山', location: '太平山國家森林遊樂區', categoryLabel: '交通',
-                                    tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}, {type: 'info', text: '車程 1.5hr', icon: 'fas fa-car'}],
-                                    note: '山路蜿蜒，建議吃早餐不要吃太飽。'
-                                },
-                                {
-                                    time: '09:30', type: 'spot', title: '見晴懷古步道', location: '見晴懷古步道', categoryLabel: '景點',
-                                    tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}, {type: 'warn', text: '氣溫低', icon: 'fas fa-temperature-low'}],
-                                    note: '來回約1小時，平緩好走。霧氣重記得保暖。'
-                                },
-                                {
-                                    time: '14:30', type: 'spot', title: '清水地熱公園', location: '清水地熱公園', categoryLabel: '體驗',
-                                    tags: [{type: 'food', text: '煮溫泉蛋/玉米', icon: 'fas fa-egg'}, {type: 'chill', text: '免費足湯', icon: 'fas fa-hot-tub'}],
-                                    note: '記得先去租竹簍，建議自備毛巾擦腳。'
-                                },
-                                {
-                                    time: '17:30', type: 'food', title: '晚餐：卜肉或海產', location: '味珍香卜肉店', categoryLabel: '美食',
-                                    tags: [{type: 'food', text: '蔥油餅', icon: 'fas fa-cookie'}, {type: 'info', text: '甲富哥需訂位', icon: 'fas fa-phone'}],
-                                    note: '回程經過三星鄉順路吃。'
-                                }
+                                { time: '08:00', type: 'trans', title: '出發前往太平山', location: '太平山國家森林遊樂區', categoryLabel: '交通', tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}], note: '車程 1.5hr，山路蜿蜒。' },
+                                { time: '09:30', type: 'spot', title: '見晴懷古步道', location: '見晴懷古步道', categoryLabel: '景點', tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}], note: '霧氣重記得保暖。' },
+                                { time: '14:30', type: 'spot', title: '清水地熱公園', location: '清水地熱公園', categoryLabel: '體驗', tags: [{type: 'food', text: '煮溫泉蛋', icon: 'fas fa-egg'}, {type: 'chill', text: '免費足湯', icon: 'fas fa-hot-tub'}], note: '記得租竹簍，自備毛巾。' },
+                                { time: '18:30', type: 'food', title: '微笑食客', location: '微笑食客', categoryLabel: '晚餐', tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}], note: '已預定目標，氣氛溫馨。' },
+                                { time: '20:30', type: 'spot', title: '空ㄟ農場夜景', location: '空ㄟ農場', categoryLabel: '夜景', tags: [{type: 'photo', text: '百萬夜景', icon: 'fas fa-star'}], note: '需在山下搭乘接駁車上山，披薩好吃。' }
                             ]
                         },
                         {
                             date: '12/15 (一)',
                             events: [
-                                {
-                                    time: '10:30', type: 'spot', title: '蘭陽動植物王國', location: '蘭陽動植物王國', categoryLabel: '景點',
-                                    tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}, {type: 'highlight', text: '袋鼠', icon: 'fas fa-paw'}],
-                                    note: '新開幕熱門景點，就在往宜蘭市順路上。'
-                                },
-                                {
-                                    time: '12:30', type: 'food', title: '微笑食客', location: '微笑食客', categoryLabel: '午餐',
-                                    tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}],
-                                    note: '已預定目標，氣氛溫馨。'
-                                },
-                                {
-                                    time: '15:00', type: 'stay', title: '山形閣 Check-in', location: '礁溪山形閣溫泉飯店', categoryLabel: '住宿',
-                                    tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}, {type: 'chill', text: '大眾裸湯', icon: 'fas fa-spa'}],
-                                    note: '入住後建議待在飯店享受設施，不要出門了！'
-                                },
-                                {
-                                    time: '18:00', type: 'food', title: '飯店晚餐/周邊', location: '礁溪山形閣溫泉飯店', categoryLabel: '晚餐',
-                                    tags: [{type: 'food', text: '米澤廳', icon: 'fas fa-wine-glass'}, {type: 'spot', text: '空ㄟ農場夜景', icon: 'fas fa-star'}],
-                                    note: '想看百萬夜景可去空ㄟ農場 (需搭接駁車)。'
-                                }
+                                { time: '12:00', type: 'food', title: '塭底烤魚', location: '塭底烤魚', categoryLabel: '午餐', tags: [{type: 'food', text: '鹽烤魚', icon: 'fas fa-fish'}], note: '魚很大隻，建議提早訂位。' },
+                                { time: '15:00', type: 'stay', title: '山形閣 Check-in', location: '礁溪山形閣溫泉飯店', categoryLabel: '住宿', tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}, {type: 'chill', text: '大眾裸湯', icon: 'fas fa-spa'}], note: '入住後就待在飯店享受設施！' },
+                                { time: '18:00', type: 'food', title: '飯店晚餐/休息', location: '礁溪山形閣溫泉飯店', categoryLabel: '晚餐', tags: [{type: 'chill', text: '放鬆', icon: 'fas fa-wine-glass'}], note: '不想出門就叫外送或吃飯店。' }
                             ]
                         },
                         {
                             date: '12/16 (二)',
                             events: [
-                                {
-                                    time: '09:00', type: 'food', title: '飯店豪華早餐', location: '礁溪山形閣溫泉飯店', categoryLabel: '早餐',
-                                    tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}],
-                                    note: '慢慢享用至11點退房。'
-                                },
-                                {
-                                    time: '11:30', type: 'food', title: '礁溪甕窯雞', location: '福哥石窯雞', categoryLabel: '午餐',
-                                    tags: [{type: 'food', text: '皮脆肉嫩', icon: 'fas fa-drumstick-bite'}],
-                                    note: '福哥或火山爆發雞都不錯。'
-                                },
-                                {
-                                    time: '13:00', type: 'shop', title: '伴手禮 & 返程', location: '奕順軒礁溪店', categoryLabel: '購物',
-                                    tags: [{type: 'shop', text: '奶凍捲', icon: 'fas fa-gift'}, {type: 'shop', text: '鴨賞', icon: 'fas fa-gift'}],
-                                    note: '買完直接上國五，避開下午塞車。'
-                                }
+                                { time: '09:00', type: 'food', title: '飯店豪華早餐', location: '礁溪山形閣溫泉飯店', categoryLabel: '早餐', tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}], note: '慢慢享用至11點退房。' },
+                                { time: '11:00', type: 'trans', title: '退房 & 前往台中', location: '屋馬燒肉', categoryLabel: '交通', tags: [{type: 'info', text: '長途車程', icon: 'fas fa-car'}], note: '直奔台中吃燒肉！' },
+                                { time: '13:30', type: 'food', title: '屋馬燒肉', location: '屋馬燒肉', categoryLabel: '午餐', tags: [{type: 'highlight', text: '雞湯必喝', icon: 'fas fa-fire'}], note: '完美的旅程Ending。' }
                             ]
                         }
                     ]
@@ -291,26 +237,67 @@
             },
             mounted() {
                 this.fetchRealTimeWeather();
+                this.initRealtimeSync();
             },
             computed: {
                 totalBudget() {
-                    return this.expenses.reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
+                    if (!this.tripData.expenses) return 0;
+                    return this.tripData.expenses.reduce((sum, item) => sum + parseInt(item.amount || 0), 0);
                 }
             },
             methods: {
+                // 初始化雲端同步
+                initRealtimeSync() {
+                    // 使用固定的文件ID 'yilan2025' 確保兩人連到同一個
+                    const docRef = db.collection('trips').doc('yilan2025');
+                    
+                    // 監聽模式 (onSnapshot)：對方一改，我這裡馬上變
+                    docRef.onSnapshot((doc) => {
+                        this.isLoading = false;
+                        if (doc.exists) {
+                            console.log("雲端資料更新:", doc.data());
+                            this.tripData = doc.data();
+                        } else {
+                            // 如果是第一次使用（雲端沒資料），把上面的 defaultDays 寫進去
+                            console.log("初始化雲端資料庫...");
+                            this.tripData.days = this.defaultDays;
+                            this.saveToCloud(); 
+                        }
+                    });
+                },
+                
+                // 儲存資料到雲端
+                saveToCloud() {
+                    this.isLoading = true;
+                    db.collection('trips').doc('yilan2025').set(this.tripData)
+                        .then(() => {
+                            this.isLoading = false;
+                            console.log("儲存成功");
+                        })
+                        .catch((error) => {
+                            console.error("儲存失敗", error);
+                            alert("儲存失敗，請檢查網路");
+                        });
+                },
+
+                // 切換編輯模式
+                toggleEdit() {
+                    // 如果是從編輯狀態->關閉，代表編輯完成，要存檔
+                    if (this.isEditing) {
+                        this.saveToCloud();
+                    }
+                    this.isEditing = !this.isEditing;
+                },
+
+                // 天氣 API
                 async fetchRealTimeWeather() {
                     try {
-                        // 使用 Open-Meteo API
-                        const lat = 24.82;
-                        const long = 121.77;
+                        const lat = 24.82; const long = 121.77;
                         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${long}&current=temperature_2m,weather_code,precipitation_probability&timezone=Asia%2FTaipei`;
-                        
                         const response = await fetch(url);
                         const data = await response.json();
                         const current = data.current;
-
                         const wmo = this.getWeatherInfo(current.weather_code);
-                        
                         this.weather = {
                             temp: Math.round(current.temperature_2m) + '°C',
                             desc: wmo.desc,
@@ -318,20 +305,28 @@
                             icon: wmo.icon,
                             bgClass: wmo.bg
                         };
-
-                    } catch (e) {
-                        console.error("天氣載入失敗", e);
-                        this.weather.desc = "氣象暫時無法顯示";
-                        this.weather.icon = "fas fa-exclamation-circle text-gray-400";
-                    }
+                    } catch (e) { console.error(e); }
                 },
+
+                // 記帳相關
+                addExpense() {
+                    if (!this.newExpense.item || !this.newExpense.amount) return;
+                    if (!this.tripData.expenses) this.tripData.expenses = [];
+                    this.tripData.expenses.push({ ...this.newExpense });
+                    this.newExpense.item = '';
+                    this.newExpense.amount = '';
+                    this.saveToCloud(); // 立即同步
+                },
+                removeExpense(idx) {
+                    this.tripData.expenses.splice(idx, 1);
+                    this.saveToCloud(); // 立即同步
+                },
+
+                // 輔助函式
                 getWeatherInfo(code) {
                     if (code === 0) return { desc: '晴朗', icon: 'fas fa-sun text-orange-400', bg: 'bg-orange-50' };
                     if (code >= 1 && code <= 3) return { desc: '多雲', icon: 'fas fa-cloud-sun text-blue-400', bg: 'bg-gray-50' };
-                    if (code >= 45 && code <= 48) return { desc: '有霧', icon: 'fas fa-smog text-gray-500', bg: 'bg-gray-100' };
                     if (code >= 51 && code <= 67) return { desc: '小雨', icon: 'fas fa-cloud-rain text-blue-500', bg: 'bg-blue-50' };
-                    if (code >= 71) return { desc: '大雨', icon: 'fas fa-snowflake text-blue-700', bg: 'bg-blue-100' };
-                    if (code >= 95) return { desc: '雷雨', icon: 'fas fa-bolt text-purple-500', bg: 'bg-purple-50' };
                     return { desc: '陰天', icon: 'fas fa-cloud text-gray-500', bg: 'bg-gray-50' };
                 },
                 getCategoryColor(type) {
@@ -350,23 +345,7 @@
                     };
                     return styles[type] || 'bg-gray-50 text-gray-600';
                 },
-                addExpense() {
-                    if (!this.newExpense.item || !this.newExpense.amount) return;
-                    this.expenses.push({ ...this.newExpense });
-                    this.newExpense.item = '';
-                    this.newExpense.amount = '';
-                    this.saveExpenses();
-                },
-                removeExpense(idx) {
-                    this.expenses.splice(idx, 1);
-                    this.saveExpenses();
-                },
-                saveExpenses() {
-                    localStorage.setItem('tripExpenses', JSON.stringify(this.expenses));
-                },
-                formatCurrency(val) {
-                    return '$' + val.toLocaleString();
-                }
+                formatCurrency(val) { return '$' + val.toLocaleString(); }
             }
         }).mount('#app')
     </script>
