@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宜蘭冬日慢旅 (回憶典藏版)</title>
+    <title>佩佩阿瑋ㄟ年末宜蘭輕旅❤️</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
@@ -14,36 +14,85 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@400;700&display=swap');
-        body { font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif; background-color: #F5F5F0; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
+            background-color: #F5F5F0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* 隱藏捲軸但保留功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); }
-        .edit-input { background: #fff; border: 2px solid #C66B3D; border-radius: 4px; padding: 2px 4px; width: 100%; color: #333; font-size: 0.9rem; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* 編輯模式樣式 */
+        .edit-input {
+            background: #fff;
+            border: 2px solid #C66B3D;
+            border-radius: 4px;
+            padding: 2px 4px;
+            width: 100%;
+            color: #333;
+            font-size: 0.9rem;
+        }
         .edit-input-time { width: 60px; text-align: center; }
+
         /* 上傳讀取條動畫 */
-        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #C66B3D; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #C66B3D;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { 'jp-black': '#2C2C2C', 'jp-gray': '#8E8E8E', 'jp-beige': '#F5F5F0', 'jp-accent': '#C66B3D', 'jp-green': '#5F7161', 'jp-blue': '#6D8494' } } }
+            theme: {
+                extend: {
+                    colors: {
+                        'jp-black': '#2C2C2C',
+                        'jp-gray': '#8E8E8E',
+                        'jp-beige': '#F5F5F0',
+                        'jp-accent': '#C66B3D',
+                        'jp-green': '#5F7161',
+                        'jp-blue': '#6D8494',
+                    }
+                }
+            }
         }
     </script>
 </head>
 <body class="text-jp-black antialiased">
     <div id="app" class="max-w-md mx-auto min-h-screen bg-jp-beige relative pb-24 shadow-2xl overflow-hidden">
         
-        <header class="pt-12 pb-4 px-6 bg-white rounded-b-3xl shadow-sm sticky top-0 z-10">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-bold tracking-widest text-jp-black">宜蘭冬旅 <span v-if="isEditing" class="text-sm text-jp-accent animate-pulse">(編輯中)</span></h1>
-                    <p class="text-xs text-jp-gray mt-1 tracking-wider">Dec 13 - 16, 2025</p>
+        <header class="pt-10 pb-4 px-6 bg-white rounded-b-3xl shadow-sm sticky top-0 z-10">
+            <div class="flex justify-between items-start">
+                <div class="flex-1 mr-4">
+                    <h1 class="text-xl font-bold tracking-widest text-jp-black leading-tight">
+                        佩佩阿瑋ㄟ<br>年末宜蘭輕旅❤️ 
+                        <span v-if="isEditing" class="text-xs text-jp-accent animate-pulse block mt-1">(編輯中)</span>
+                    </h1>
+                    <p class="text-[10px] text-jp-gray mt-1 tracking-wider">Dec 13 - 16, 2025</p>
+                    
+                    <p class="text-xs text-jp-accent mt-3 font-medium leading-relaxed border-l-2 border-jp-accent pl-2">
+                        又一起度過了一年，<br>讓我們在2025結束前，<br>來一段充滿愛的旅程吧！
+                    </p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <div v-if="isLoading" class="text-xs text-gray-400"><i class="fas fa-sync fa-spin"></i></div>
+                
+                <div class="flex flex-col items-end gap-2">
                     <div class="w-10 h-10 rounded-full bg-jp-green text-white flex items-center justify-center shadow-md">
                         <i class="fas fa-leaf"></i>
                     </div>
+                    <div v-if="isLoading" class="text-xs text-gray-400"><i class="fas fa-sync fa-spin"></i></div>
                 </div>
             </div>
             
@@ -60,9 +109,13 @@
             
             <div v-if="currentTab === 'schedule'">
                 <div class="flex space-x-2 overflow-x-auto no-scrollbar mb-4 pb-1">
-                    <button v-for="(day, index) in tripData.days" :key="index" @click="currentDay = index"
+                    <button 
+                        v-for="(day, index) in tripData.days" 
+                        :key="index"
+                        @click="currentDay = index"
                         :class="currentDay === index ? 'bg-jp-black text-white shadow-lg' : 'bg-white text-gray-400'"
-                        class="flex-shrink-0 px-5 py-3 rounded-2xl transition-all duration-300 flex flex-col items-center min-w-[80px]">
+                        class="flex-shrink-0 px-5 py-3 rounded-2xl transition-all duration-300 flex flex-col items-center min-w-[80px]"
+                    >
                         <span class="text-xs font-light">Day {{ index + 1 }}</span>
                         <span class="text-lg font-bold">{{ day.date }}</span>
                     </button>
@@ -71,6 +124,7 @@
                 <div v-if="tripData.days && tripData.days.length > 0" class="space-y-4 pb-20">
                     <div v-for="(item, idx) in tripData.days[currentDay].events" :key="idx" 
                          class="glass-card rounded-2xl p-5 relative overflow-hidden transition-all duration-200">
+                        
                         <div class="absolute left-0 top-0 bottom-0 w-1" :class="getCategoryColor(item.type)"></div>
 
                         <button v-if="isEditing" @click="deleteEvent(currentDay, idx)" class="absolute right-2 top-2 text-red-400 p-2 z-20">
@@ -124,7 +178,7 @@
                                 <label class="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs transition flex items-center">
                                     <span v-if="uploadingId === item.id" class="loader mr-1"></span>
                                     <span v-else><i class="fas fa-plus mr-1"></i></span>
-                                    新增照片/影片
+                                    新增
                                     <input type="file" class="hidden" accept="image/*,video/*" @change="handleFileUpload($event, currentDay, idx)" :disabled="uploadingId === item.id">
                                 </label>
                             </div>
@@ -185,6 +239,7 @@
                     </div>
                 </div>
             </div>
+
         </main>
 
         <button v-if="currentTab === 'schedule'" @click="toggleEdit" 
@@ -218,12 +273,12 @@
         // 🔥 重要：請在這裡填入你的 Firebase Config
         // ==========================================
         const firebaseConfig = {
-            apiKey: "你的_API_KEY",
-            authDomain: "你的專案ID.firebaseapp.com",
-            projectId: "你的專案ID",
-            storageBucket: "你的專案ID.appspot.com", // 必須要有這一行才能上傳！
-            messagingSenderId: "...",
-            appId: "..."
+            apiKey: "AIzaSyAv9Q6XuB-XL8s5-p8_xU6iTHMpm9Toy5E",
+            authDomain: "yilan-trip-c1069.firebaseapp.com",
+            projectId: "yilan-trip-c1069",
+            storageBucket: "yilan-trip-c1069.firebasestorage.app",
+            messagingSenderId: "754631881000",
+            appId: "1:754631881000:web:8d25bf3cad2e800557201d"
         };
 
         // 初始化 Firebase
@@ -247,44 +302,207 @@
                     newExpense: { item: '', amount: '' },
                     weather: { temp: '--', desc: '載入中...', rainProb: '', icon: 'fas fa-spinner fa-spin text-gray-400', bgClass: 'bg-gray-50' },
                     
-                    tripData: { days: [], expenses: [] },
+                    tripData: {
+                        days: [],
+                        expenses: []
+                    },
 
-                    // 預設行程
+                    // 🔥 預設行程資料 (完整保留，為了清楚閱讀已展開)
                     defaultDays: [
                         {
                             date: '12/13 (六)',
                             events: [
-                                { id: 1, time: '10:30', type: 'spot', title: '蘭陽動植物王國', location: '蘭陽動植物王國', categoryLabel: '景點', tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}], note: '第一站先來療癒一下！', media: [] },
-                                { id: 2, time: '14:00', type: 'stay', title: '日光綠築 Check-in', location: '日光綠築 LOHERB', categoryLabel: '住宿', tags: [{type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}], note: '享受渡假氛圍，趁天亮拍美照。', media: [] },
-                                { id: 3, time: '16:30', type: 'spot', title: '冬山河生態綠舟', location: '冬山河生態綠舟', categoryLabel: '景點', tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}], note: '傍晚點燈後非常浪漫。', media: [] },
-                                { id: 4, time: '18:00', type: 'food', title: '香廚臭豆腐', location: '香廚米粉羹', categoryLabel: '小吃', tags: [{type: 'food', text: '有機綠臭豆腐', icon: 'fas fa-utensils'}], note: '在地人推薦，必吃臭豆腐跟米粉羹。', media: [] },
-                                { id: 5, time: '19:30', type: 'food', title: '羅東夜市', location: '羅東夜市', categoryLabel: '晚餐', tags: [{type: 'food', text: '阿灶伯', icon: 'fas fa-utensils'}], note: '人多小心錢包，建議停立體停車場。', media: [] }
+                                {
+                                    id: 1,
+                                    time: '10:30',
+                                    type: 'spot',
+                                    title: '蘭陽動植物王國',
+                                    location: '蘭陽動植物王國',
+                                    categoryLabel: '景點',
+                                    tags: [{type: 'highlight', text: '水豚互動', icon: 'fas fa-paw'}],
+                                    note: '第一站先來療癒一下！',
+                                    media: []
+                                },
+                                {
+                                    id: 2,
+                                    time: '14:00',
+                                    type: 'stay',
+                                    title: '日光綠築 Check-in',
+                                    location: '日光綠築 LOHERB',
+                                    categoryLabel: '住宿',
+                                    tags: [{type: 'chill', text: '生態池下午茶', icon: 'fas fa-coffee'}],
+                                    note: '享受渡假氛圍，趁天亮拍美照。',
+                                    media: []
+                                },
+                                {
+                                    id: 3,
+                                    time: '16:30',
+                                    type: 'spot',
+                                    title: '冬山河生態綠舟',
+                                    location: '冬山河生態綠舟',
+                                    categoryLabel: '景點',
+                                    tags: [{type: 'highlight', text: '神秘河道', icon: 'fas fa-star'}],
+                                    note: '傍晚點燈後非常浪漫。',
+                                    media: []
+                                },
+                                {
+                                    id: 4,
+                                    time: '18:00',
+                                    type: 'food',
+                                    title: '香廚臭豆腐',
+                                    location: '香廚米粉羹',
+                                    categoryLabel: '小吃',
+                                    tags: [{type: 'food', text: '有機綠臭豆腐', icon: 'fas fa-utensils'}],
+                                    note: '在地人推薦，必吃臭豆腐跟米粉羹。',
+                                    media: []
+                                },
+                                {
+                                    id: 5,
+                                    time: '19:30',
+                                    type: 'food',
+                                    title: '羅東夜市',
+                                    location: '羅東夜市',
+                                    categoryLabel: '晚餐',
+                                    tags: [{type: 'food', text: '阿灶伯', icon: 'fas fa-utensils'}],
+                                    note: '人多小心錢包，建議停立體停車場。',
+                                    media: []
+                                }
                             ]
                         },
                         {
                             date: '12/14 (日)',
                             events: [
-                                { id: 6, time: '08:00', type: 'trans', title: '出發前往太平山', location: '太平山國家森林遊樂區', categoryLabel: '交通', tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}], note: '車程 1.5hr，山路蜿蜒。', media: [] },
-                                { id: 7, time: '09:30', type: 'spot', title: '見晴懷古步道', location: '見晴懷古步道', categoryLabel: '景點', tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}], note: '霧氣重記得保暖。', media: [] },
-                                { id: 8, time: '14:30', type: 'spot', title: '清水地熱公園', location: '清水地熱公園', categoryLabel: '體驗', tags: [{type: 'food', text: '煮溫泉蛋', icon: 'fas fa-egg'}], note: '記得租竹簍，自備毛巾。', media: [] },
-                                { id: 9, time: '18:30', type: 'food', title: '微笑食客', location: '微笑食客', categoryLabel: '晚餐', tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}], note: '已預定目標，氣氛溫馨。', media: [] },
-                                { id: 10, time: '20:30', type: 'spot', title: '空ㄟ農場夜景', location: '空ㄟ農場', categoryLabel: '夜景', tags: [{type: 'photo', text: '百萬夜景', icon: 'fas fa-star'}], note: '需在山下搭乘接駁車上山。', media: [] }
+                                {
+                                    id: 6,
+                                    time: '08:00',
+                                    type: 'trans',
+                                    title: '出發前往太平山',
+                                    location: '太平山國家森林遊樂區',
+                                    categoryLabel: '交通',
+                                    tags: [{type: 'warn', text: '容易暈車', icon: 'fas fa-pills'}],
+                                    note: '車程 1.5hr，山路蜿蜒。',
+                                    media: []
+                                },
+                                {
+                                    id: 7,
+                                    time: '09:30',
+                                    type: 'spot',
+                                    title: '見晴懷古步道',
+                                    location: '見晴懷古步道',
+                                    categoryLabel: '景點',
+                                    tags: [{type: 'highlight', text: '全球最美小路', icon: 'fas fa-tree'}],
+                                    note: '霧氣重記得保暖。',
+                                    media: []
+                                },
+                                {
+                                    id: 8,
+                                    time: '14:30',
+                                    type: 'spot',
+                                    title: '清水地熱公園',
+                                    location: '清水地熱公園',
+                                    categoryLabel: '體驗',
+                                    tags: [{type: 'food', text: '煮溫泉蛋', icon: 'fas fa-egg'}],
+                                    note: '記得租竹簍，自備毛巾。',
+                                    media: []
+                                },
+                                {
+                                    id: 9,
+                                    time: '18:30',
+                                    type: 'food',
+                                    title: '微笑食客',
+                                    location: '微笑食客',
+                                    categoryLabel: '晚餐',
+                                    tags: [{type: 'highlight', text: '在地食材簡餐', icon: 'fas fa-utensils'}],
+                                    note: '已預定目標，氣氛溫馨。',
+                                    media: []
+                                },
+                                {
+                                    id: 10,
+                                    time: '20:30',
+                                    type: 'spot',
+                                    title: '空ㄟ農場夜景',
+                                    location: '空ㄟ農場',
+                                    categoryLabel: '夜景',
+                                    tags: [{type: 'photo', text: '百萬夜景', icon: 'fas fa-star'}],
+                                    note: '需在山下搭乘接駁車上山。',
+                                    media: []
+                                }
                             ]
                         },
                         {
                             date: '12/15 (一)',
                             events: [
-                                { id: 11, time: '12:00', type: 'food', title: '塭底烤魚', location: '塭底烤魚', categoryLabel: '午餐', tags: [{type: 'food', text: '鹽烤魚', icon: 'fas fa-fish'}], note: '魚很大隻，建議提早訂位。', media: [] },
-                                { id: 12, time: '15:00', type: 'stay', title: '山形閣 Check-in', location: '礁溪山形閣溫泉飯店', categoryLabel: '住宿', tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}], note: '入住後就待在飯店享受設施！', media: [] },
-                                { id: 13, time: '18:00', type: 'food', title: '飯店晚餐/休息', location: '礁溪山形閣溫泉飯店', categoryLabel: '晚餐', tags: [{type: 'chill', text: '放鬆', icon: 'fas fa-wine-glass'}], note: '不想出門就叫外送或吃飯店。', media: [] }
+                                {
+                                    id: 11,
+                                    time: '12:00',
+                                    type: 'food',
+                                    title: '塭底烤魚',
+                                    location: '塭底烤魚',
+                                    categoryLabel: '午餐',
+                                    tags: [{type: 'food', text: '鹽烤魚', icon: 'fas fa-fish'}],
+                                    note: '魚很大隻，建議提早訂位。',
+                                    media: []
+                                },
+                                {
+                                    id: 12,
+                                    time: '15:00',
+                                    type: 'stay',
+                                    title: '山形閣 Check-in',
+                                    location: '礁溪山形閣溫泉飯店',
+                                    categoryLabel: '住宿',
+                                    tags: [{type: 'chill', text: '房內大湯池', icon: 'fas fa-bath'}],
+                                    note: '入住後就待在飯店享受設施！',
+                                    media: []
+                                },
+                                {
+                                    id: 13,
+                                    time: '18:00',
+                                    type: 'food',
+                                    title: '飯店晚餐/休息',
+                                    location: '礁溪山形閣溫泉飯店',
+                                    categoryLabel: '晚餐',
+                                    tags: [{type: 'chill', text: '放鬆', icon: 'fas fa-wine-glass'}],
+                                    note: '不想出門就叫外送或吃飯店。',
+                                    media: []
+                                }
                             ]
                         },
                         {
                             date: '12/16 (二)',
                             events: [
-                                { id: 14, time: '09:00', type: 'food', title: '飯店豪華早餐', location: '礁溪山形閣溫泉飯店', categoryLabel: '早餐', tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}], note: '慢慢享用至11點退房。', media: [] },
-                                { id: 15, time: '11:00', type: 'trans', title: '退房 & 前往台中', location: '屋馬燒肉', categoryLabel: '交通', tags: [{type: 'info', text: '長途車程', icon: 'fas fa-car'}], note: '直奔台中吃燒肉！', media: [] },
-                                { id: 16, time: '13:30', type: 'food', title: '屋馬燒肉', location: '屋馬燒肉', categoryLabel: '午餐', tags: [{type: 'highlight', text: '雞湯必喝', icon: 'fas fa-fire'}], note: '完美的旅程Ending。', media: [] }
+                                {
+                                    id: 14,
+                                    time: '09:00',
+                                    type: 'food',
+                                    title: '飯店豪華早餐',
+                                    location: '礁溪山形閣溫泉飯店',
+                                    categoryLabel: '早餐',
+                                    tags: [{type: 'highlight', text: '半自助式', icon: 'fas fa-coffee'}],
+                                    note: '慢慢享用至11點退房。',
+                                    media: []
+                                },
+                                {
+                                    id: 15,
+                                    time: '11:00',
+                                    type: 'trans',
+                                    title: '退房 & 前往台中',
+                                    location: '屋馬燒肉',
+                                    categoryLabel: '交通',
+                                    tags: [{type: 'info', text: '長途車程', icon: 'fas fa-car'}],
+                                    note: '直奔台中吃燒肉！',
+                                    media: []
+                                },
+                                {
+                                    id: 16,
+                                    time: '13:30',
+                                    type: 'food',
+                                    title: '屋馬燒肉',
+                                    location: '屋馬燒肉',
+                                    categoryLabel: '午餐',
+                                    tags: [{type: 'highlight', text: '雞湯必喝', icon: 'fas fa-fire'}],
+                                    note: '完美的旅程Ending。',
+                                    media: []
+                                }
                             ]
                         }
                     ]
@@ -304,12 +522,14 @@
                 // 初始化雲端同步
                 initRealtimeSync() {
                     const docRef = db.collection('trips').doc('yilan2025');
+                    
                     docRef.onSnapshot((doc) => {
                         this.isLoading = false;
                         if (doc.exists) {
                             console.log("Sync Update");
                             this.tripData = doc.data();
                         } else {
+                            // 如果雲端沒資料，寫入預設
                             this.tripData.days = this.defaultDays;
                             this.saveToCloud(); 
                         }
@@ -317,13 +537,14 @@
                 },
                 
                 saveToCloud() {
-                    // 自動儲存時不顯示全域 Loading，只在 Console log
                     db.collection('trips').doc('yilan2025').set(this.tripData)
                         .catch((error) => alert("儲存失敗: " + error.message));
                 },
 
                 toggleEdit() {
-                    if (this.isEditing) this.saveToCloud();
+                    if (this.isEditing) {
+                        this.saveToCloud();
+                    }
                     this.isEditing = !this.isEditing;
                 },
 
@@ -331,7 +552,7 @@
                 // 🔥 新增/刪除行程功能
                 // ==========================
                 addNewEvent(dayIndex) {
-                    const newId = Date.now(); // 產生唯一 ID
+                    const newId = Date.now();
                     this.tripData.days[dayIndex].events.push({
                         id: newId,
                         time: '12:00',
@@ -343,7 +564,6 @@
                         note: '',
                         media: []
                     });
-                    // 自動進入編輯模式並儲存
                     this.isEditing = true;
                     this.saveToCloud();
                 },
@@ -363,22 +583,15 @@
                     if (!file) return;
 
                     const eventItem = this.tripData.days[dayIdx].events[eventIdx];
-                    this.uploadingId = eventItem.id; // 設定 Loading 狀態
+                    this.uploadingId = eventItem.id;
 
                     try {
-                        // 1. 建立 Storage 路徑: trips/yilan2025/files/時間戳_檔名
                         const storageRef = storage.ref(`trips/yilan2025/files/${Date.now()}_${file.name}`);
-                        
-                        // 2. 上傳檔案
                         const snapshot = await storageRef.put(file);
-                        
-                        // 3. 取得公開連結
                         const downloadURL = await snapshot.ref.getDownloadURL();
 
-                        // 4. 判斷類型
                         const type = file.type.startsWith('video') ? 'video' : 'image';
 
-                        // 5. 存回 tripData
                         if (!eventItem.media) eventItem.media = [];
                         eventItem.media.push({
                             url: downloadURL,
@@ -386,20 +599,17 @@
                             name: file.name
                         });
 
-                        // 6. 同步到 Firestore
                         this.saveToCloud();
 
                     } catch (error) {
-                        console.error(error);
-                        alert("上傳失敗：" + error.message + "\n請確認 Firebase Storage 是否已開啟 Test Mode。");
+                        alert("上傳失敗：" + error.message);
                     } finally {
-                        this.uploadingId = null; // 解除 Loading
+                        this.uploadingId = null;
                     }
                 },
 
                 deleteMedia(dayIdx, eventIdx, mediaIdx) {
                     if(confirm('確定要刪除這張照片/影片嗎？')) {
-                        // 這裡只刪除資料庫連結，實際檔案為了簡化不刪除 Storage (避免複雜權限問題)
                         this.tripData.days[dayIdx].events[eventIdx].media.splice(mediaIdx, 1);
                         this.saveToCloud();
                     }
